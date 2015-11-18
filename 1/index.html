@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>node.js+expressでWebアプリ作ってみた</title>
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="../css/reveal.css">
+		<link rel="stylesheet" href="../css/theme/solarized.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="../lib/css/zenburn.css">
+		<!-- 表題で大文字になるのを解除する -->
+		<style type="text/css">
+			.reveal h1,
+			.reveal h2,
+			.reveal h3,
+			.reveal h4,
+			.reveal h5,
+			.reveal h6 {
+				text-transform: none;
+			}
+		</style>
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section data-markdown>
+					<script type="text/template">
+						# node.js+expressで
+						# Webアプリ作ってみた
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						http://korindo.sai-chan.com/
+						![Alt text](./screenshot1.png)
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						**基本的なCRUDアプリ**
+						* Twitter OAuth によるユーザー認証
+						* 書籍登録／編集機能
+						* 書籍に紐づく感想投稿／編集機能
+						* 書籍情報取得のためのWebスクレイピング
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						**使ってるもの**
+						* MySQL 5.6(基本的なデータ保存)
+						* Redis 3.0(セッション管理、Flash Message etc...)
+						* ImageMagick(スクレイピングした画像の縮小)
+						* forever(nodeサーバーの死活監視)
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						# Express
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						**PerlでいうMojolicious::Lite, RubyでいうSinatra**
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						Express Generator を使うとアプリの雛形を作ってくれる
+						```
+						$ npm install express-generator -g
+						# --ejs オプションでejsを使用したり、--c sass でCSSにsassを使ったり
+						$ express myapp
+						create : myapp
+						create : myapp/package.json
+						create : myapp/app.js
+						create : myapp/public
+						create : myapp/public/javascripts
+						create : myapp/public/images
+						create : myapp/routes
+						create : myapp/routes/index.js
+						create : myapp/routes/users.js
+						create : myapp/public/stylesheets
+						create : myapp/public/stylesheets/style.css
+						create : myapp/views
+						create : myapp/views/index.jade
+						create : myapp/views/layout.jade
+						create : myapp/views/error.jade
+						create : myapp/bin
+						create : myapp/bin/www
+						```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+					** 基本 **
+					```
+					app.get('/get', function (req, res) {
+					  // テンプレに渡す変数
+					  var data ={};
+					  res.render('テンプレート名', data);
+					});
+
+					app.post('/post', function (req, res) {
+					  // テンプレに渡す変数
+					  var data ={};
+					  res.render('テンプレート名', data);
+					});
+					```
+
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+						**express で大切なConnectミドルウェアの概念**
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						PerlでいうPlack
+
+						RubyでいうRack
+
+						Pythonでいうwsgiref
+
+						みたいなイメージ
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						**Expressではmiddlewareを追加して機能を追加していく**
+						```
+						// POSTで受け取ったjsonデータ取得
+						app.use(bodyParser.json());
+
+						// POSTで受け取ったurlencodedなデータ取得
+						app.use(bodyParser.urlencoded({ extended: false }));
+
+						// Cookieの取得
+						app.use(cookieParser());
+						```
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						**ミドルウェアの正体**
+						```
+						// ただのfunction
+						app.use(function(req, res, next) {
+							// req には HTTPリクエストデータが入ってる
+
+							// 中でreq を加工する。
+							req.hogehoge = 'fugafuga';
+
+							// 次のmiddleware へ
+							next();
+						});
+						app.use(function(req, res, next) {
+							// req には HTTPリクエストデータが入ってる
+
+							// 中でreq を加工する。
+							var hogehoge = req.hogehoge;
+
+							req.hogehoge = hogehoge + "fugafuga!";
+
+							// 次のmiddleware へ
+							next();
+						});
+						```
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+						ユーザーからのリクエストのたびに
+
+						middleware -> 次のmiddleware -> 次の次のmiddleware
+
+						と通って行くイメージ
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+						express は薄い機能しか提供しないので
+
+						MVC周り作りこまないといけないのが大変
+					</script>
+				</section>
+
+				<section data-markdown>
+					<script type="text/template">
+						フルスタックなフレームワークだと以下が有名
+
+						* Sails.js (Ruby on Railsの設計思想そのまま)
+						* Meteor.js(クライアント周りのJSまで面倒見てくれる。WebSocketも標準対応)
+
+					</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+						**おしまい**
+					</script>
+				</section>
+			</div>
+
+		</div>
+
+		<script src="../lib/js/head.min.js"></script>
+		<script src="../js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'convex', // none/fade/slide/convex/concave/zoom
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: '../lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: '../plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: '../plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: '../plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: '../plugin/zoom-js/zoom.js', async: true },
+					{ src: '../plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
